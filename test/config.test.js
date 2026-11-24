@@ -15,7 +15,11 @@ test("parseDeployBlock validates block numbers", () => {
   assert.equal(parseDeployBlock(undefined), 0);
   assert.equal(parseDeployBlock(""), 0);
   assert.equal(parseDeployBlock(" 456 "), 456);
+  assert.equal(parseDeployBlock("9007199254740991"), Number.MAX_SAFE_INTEGER);
   assert.throws(() => parseDeployBlock("12abc"), /Invalid DEPLOY_BLOCK/);
+  assert.throws(() => parseDeployBlock("1e3"), /Invalid DEPLOY_BLOCK/);
+  assert.throws(() => parseDeployBlock("0x10"), /Invalid DEPLOY_BLOCK/);
+  assert.throws(() => parseDeployBlock("9007199254740992"), /Invalid DEPLOY_BLOCK/);
   assert.throws(() => parseDeployBlock("9007199254740993"), /Invalid DEPLOY_BLOCK/);
 });
 

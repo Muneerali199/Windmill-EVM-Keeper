@@ -31,57 +31,21 @@ if (-not (Test-Path $NodeModules)) {
     Write-Host "[2/3] Dependencies already installed." -ForegroundColor Green
 }
 
-# 3. Check config variables
-$EnvContent = @(Get-Content $EnvFile)
-
-function Get-EnvValue {
-    param(
-        [string]$Name,
-        [string[]]$Lines
-    )
-
-    foreach ($Line in $Lines) {
-        if ($Line -match "^\s*$Name\s*=\s*(.*)$") {
-            return $Matches[1].Trim()
-        }
-    }
-
-    return ""
-}
-
-$RpcUrl = Get-EnvValue -Name "RPC_URL" -Lines $EnvContent
-$PrivateKey = Get-EnvValue -Name "PRIVATE_KEY" -Lines $EnvContent
-$ContractAddress = Get-EnvValue -Name "CONTRACT_ADDRESS" -Lines $EnvContent
-
-$ConfigErrors = @()
-
-if ([string]::IsNullOrWhiteSpace($RpcUrl)) {
-    $ConfigErrors += "RPC_URL is missing."
-}
-
-if ($PrivateKey -notmatch '^0x[0-9a-fA-F]{64}$') {
-    $ConfigErrors += "PRIVATE_KEY must be 0x followed by exactly 64 hexadecimal characters."
-}
-
-if ([string]::IsNullOrWhiteSpace($ContractAddress)) {
-    $ConfigErrors += "CONTRACT_ADDRESS is missing."
-}
-
-if ($ConfigErrors.Count -gt 0) {
-    Write-Host "[3/3] Invalid keeper configuration:" -ForegroundColor Red
-    foreach ($ConfigError in $ConfigErrors) {
-        Write-Host "  - $ConfigError" -ForegroundColor Yellow
-    }
-    Write-Host "Edit $EnvFile and run the keeper again." -ForegroundColor Yellow
-    Write-Host "================================================================" -ForegroundColor Yellow
-    exit 1
-}
-
-Write-Host "[3/3] Config variables are valid." -ForegroundColor Green
-
-# 4. Launch Keeper
-Write-Host "Starting the keeper runner loop..." -ForegroundColor Yellow
 Push-Location $KeeperDir
-node src/index.js
-Pop-Location
+try {
+    # 3. Validate the same environment the keeper will load.
+    node src/validate-launch-config.js
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Check $EnvFile and any environment overrides, then run the keeper again." -ForegroundColor Yellow
+        exit $LASTEXITCODE
+    }
 
+    Write-Host "[3/3] Config variables are valid." -ForegroundColor Green
+
+    # 4. Launch Keeper
+    Write-Host "Starting the keeper runner loop..." -ForegroundColor Yellow
+    node src/index.js
+    exit $LASTEXITCODE
+} finally {
+    Pop-Location
+}
